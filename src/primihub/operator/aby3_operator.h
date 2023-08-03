@@ -1,32 +1,31 @@
 // "Copyright [2023] <Primihub>"
 #ifndef SRC_PRIMIHUB_OPERATOR_ABY3_OPERATOR_H_
 #define SRC_PRIMIHUB_OPERATOR_ABY3_OPERATOR_H_
-#include <unistd.h>
 #include <glog/logging.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cmath>
 #include <random>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "Eigen/Dense"
-#include "src/primihub/util/eigen_util.h"
+#include "aby3/Circuit/kogge_stone.h"
+#include "aby3/sh3/Sh3BinaryEvaluator.h"
 #include "aby3/sh3/Sh3Encryptor.h"
 #include "aby3/sh3/Sh3Evaluator.h"
-#include "aby3/sh3/Sh3BinaryEvaluator.h"
-#include "aby3/sh3/Sh3ShareGen.h"
+#include "aby3/sh3/Sh3FixedPoint.h"
 #include "aby3/sh3/Sh3Piecewise.h"
 #include "aby3/sh3/Sh3Runtime.h"
-#include "aby3/sh3/Sh3FixedPoint.h"
+#include "aby3/sh3/Sh3ShareGen.h"
 #include "aby3/sh3/Sh3Types.h"
-
 #include "cryptoTools/Circuit/BetaCircuit.h"
-#include "aby3/Circuit/kogge_stone.h"
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Session.h"
 #include "src/primihub/common/common.h"
+#include "src/primihub/util/eigen_util.h"
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
@@ -45,13 +44,12 @@ const uint8_t VAL_BITCOUNT = 64;
 using namespace aby3;
 
 using BetaCircuit = osuCrypto::BetaCircuit;
-using KoggeStoneLibrary = aby3::KoggeStoneLibrary;   // TODO move to crptotool
+using KoggeStoneLibrary = aby3::KoggeStoneLibrary;  // TODO move to crptotool
 using Channel = osuCrypto::Channel;
-
 
 class MPCOperator {
  public:
-  aby3::CommPkg* comm_pkg_ref_{nullptr};
+  aby3::CommPkg *comm_pkg_ref_{nullptr};
 
   Sh3Encryptor enc;
   Sh3BinaryEvaluator binEval;
@@ -69,11 +67,12 @@ class MPCOperator {
   MPCOperator(u64 partyIdx_, std::string NextName, std::string PrevName)
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
-  Channel& mNext() {return comm_pkg_ref_->mNext;}
-  Channel& mPrev() {return comm_pkg_ref_->mPrev;}
-  int setup(std::string next_ip, std::string prev_ip, u32 next_port, u32 prev_port);
+  Channel &mNext() { return comm_pkg_ref_->mNext; }
+  Channel &mPrev() { return comm_pkg_ref_->mPrev; }
+  int setup(std::string next_ip, std::string prev_ip, u32 next_port,
+            u32 prev_port);
   int setup(std::shared_ptr<aby3::CommPkg> comm_pkg);
-  int setup(aby3::CommPkg* comm_pkg);
+  int setup(aby3::CommPkg *comm_pkg);
   retcode InitEngine();
   ~MPCOperator() { fini(); }
 
@@ -81,12 +80,12 @@ class MPCOperator {
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
-    for (i64 i = 0; i < vals.size(); ++i)
-      fixedMatrix(i) = vals(i);
+    for (i64 i = 0; i < vals.size(); ++i) fixedMatrix(i) = vals(i);
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
   }
 
-  template <Decimal D> void createShares(sf64Matrix<D> &sharedMatrix) {
+  template <Decimal D>
+  void createShares(sf64Matrix<D> &sharedMatrix) {
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
   }
 
@@ -334,7 +333,8 @@ class MPCOperator {
   }
 
   template <Decimal D>
-  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed, bool mode) {
+  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed,
+                              bool mode) {
     sf64Matrix<D> temp = sharedFixed;
 
     if (partyIdx == 0) {
@@ -486,8 +486,8 @@ class MPCOperator {
     for (int i = 5; i >= 0; i--) {
       VLOG(6) << "The " << i << "th time iteration";
 
-      // here we calculate the rank in each iteration. <<,>>can only use in
-      // integer type
+      // here we calculate the rank in each iteration. <<,>>can only use
+      // in integer type
       u64 round_bound = 1 << i;
       // u64 rank <<=  D;
 
@@ -503,14 +503,26 @@ class MPCOperator {
           rank_temp(k, j) = 1ULL << rank_matrix(k, j);
         }
       }
+
+      f64Matrix<D> bias_matrix(Y.rows(), Y.cols());
+      for (u64 i = 0; i < Y.rows(); i++) {
+        bias_matrix(i, 0) = 0.001;
+      }
+      sf64Matrix<D> sfbias_matrix(Y.rows(), Y.cols());
+      if (partyIdx == 0) {
+        enc.localFixedMatrix(runtime, bias_matrix, sfbias_matrix).get();
+      } else {
+        enc.remoteFixedMatrix(runtime, sfbias_matrix).get();
+      }
+
       sf64Matrix<D> sfrank_temp(Y.rows(), Y.cols());
-      if (partyIdx == 0) { // key point here is we can use partyIdx == 0 to
-                           // present the input secret belongs to whom.
+      if (partyIdx == 0) {  // key point here is we can use partyIdx == 0 to
+                            // present the input secret belongs to whom.
         enc.localFixedMatrix(runtime, rank_temp, sfrank_temp).get();
       } else {
         enc.remoteFixedMatrix(runtime, sfrank_temp).get();
       }
-      Y_temp = Y - sfrank_temp;
+      Y_temp = Y - sfrank_temp + sfbias_matrix;
 
       /*
         what is mShares[0] means to?
@@ -518,17 +530,18 @@ class MPCOperator {
       */
       // }
 
-      // here we use MPC_DReLu to calculate the signal of (x-rank) and get 1
-      // or 0.
+      // here we use MPC_DReLu to calculate the signal of (x-rank) and get
+      // 1 or 0.
 
       drelu_result = MPC_DReLu(Y_temp);
 
       VLOG(6) << i << "th Drelu result for Y_temp"
               << revealAll(drelu_result).format(HeavyFmt);
 
-      drelu_result_temp = revealAll(
-          drelu_result);  // ematrix should mutiply rank to get rank matrix.
-      // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
+      drelu_result_temp = revealAll(drelu_result);  // ematrix should mutiply
+                                                    // rank to get rank matrix.
+      // rank_matrix += rank * drelu_result_temp;//check if this is
+      // working!!!
       for (i64 i = 0; i < Alpha_matrix.size(); ++i) {
         Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
       }
@@ -560,8 +573,8 @@ class MPCOperator {
     eMatrix<double> drelu_result_temp(Y.rows(), Y.cols());
     eMatrix<i64> rank_matrix(Y.rows(), Y.cols());
     for (int i = 5; i >= 0; i--) {
-      // here we calculate the rank in each iteration. <<,>>can only use in
-      // integer type
+      // here we calculate the rank in each iteration. <<,>>can only use
+      // in integer type
       u64 round_bound = 1 << i;
       // u64 rank <<=  D;
 
@@ -579,8 +592,8 @@ class MPCOperator {
       }
 
       sf64Matrix<D> sfrank_temp(Y.rows(), Y.cols());
-      if (partyIdx == 0) { // key point here is we can use partyIdx == 0 to
-                           // present the input secret belongs to whom.
+      if (partyIdx == 0) {  // key point here is we can use partyIdx == 0 to
+                            // present the input secret belongs to whom.
         enc.localFixedMatrix(runtime, rank_temp, sfrank_temp).get();
       } else {
         enc.remoteFixedMatrix(runtime, sfrank_temp).get();
@@ -594,14 +607,15 @@ class MPCOperator {
       */
       // }
 
-      // here we use MPC_DReLu to calculate the signal of (x-rank) and get 1 or
-      // 0.
+      // here we use MPC_DReLu to calculate the signal of (x-rank) and get
+      // 1 or 0.
 
       drelu_result = MPC_DReLu(Y_temp);
 
-      drelu_result_temp = revealAll(
-          drelu_result);  // ematrix should mutiply rank to get rank matrix.
-      // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
+      drelu_result_temp = revealAll(drelu_result);  // ematrix should mutiply
+                                                    // rank to get rank matrix.
+      // rank_matrix += rank * drelu_result_temp;//check if this is
+      // working!!!
       for (i64 i = 0; i < Alpha_matrix.size(); ++i) {
         Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
       }
@@ -674,14 +688,20 @@ class MPCOperator {
     sf64Matrix<D> denominator_sign(B.rows(), B.cols());
     sf64Matrix<D> denominator(B.rows(), B.cols());
     denominator_sign = MPC_QuoDertermine(B);
-    denominator = MPC_Abs(B);
+    MPC_Dotproduct(B, denominator_sign, denominator);
+    // denominator = MPC_Abs(B);
     sf64Matrix<D> numerator_sign(A.rows(), A.cols());
     sf64Matrix<D> numerator(A.rows(), A.cols());
     numerator_sign = MPC_QuoDertermine(A);
-    numerator = MPC_Abs(A);
+    // numerator = MPC_Abs(A);
+    MPC_Dotproduct(A, numerator_sign, numerator);
 
+    // avoid using piecewise function to avoid communicate problems
+    sf64Matrix<D> multiply_num_den(B.rows(), B.cols());
     sf64Matrix<D> quotient_sign(B.rows(), B.cols());
-    MPC_Dotproduct(denominator_sign, numerator_sign, quotient_sign);
+    // MPC_Dotproduct(denominator_sign, numerator_sign, quotient_sign);
+    MPC_Dotproduct(denominator, numerator, multiply_num_den);
+    quotient_sign = MPC_QuoDertermine(multiply_num_den);
 
     //.................................................................................
     // judge whether denominator >=0.5 or <0.5
@@ -808,7 +828,8 @@ class MPCOperator {
                        temp_twoc);  // const needn't .get()
     //...............................................................................
     // The initial approximation of 1/c
-    w0 = sftwopotnine - temp_twoc;  // here means w0 has been truncate by rank+1;
+    w0 =
+        sftwopotnine - temp_twoc;  // here means w0 has been truncate by rank+1;
 
     VLOG(6) << "1/c w0 result: " << revealAll(w0).format(HeavyFmt);
 
@@ -896,14 +917,15 @@ class MPCOperator {
       LOG(INFO) << "Dump finish.";
     }
 
-    // The compare is a binary operator, so only two party will provide value
-    // for compare, find out which party don't provide value.
+    // The compare is a binary operator, so only two party will provide
+    // value for compare, find out which party don't provide value.
     int skip_index = -1;
     for (uint64_t i = 0; i < 3; i++) {
       if (all_party_shape[i][0] == 0 && all_party_shape[i][1] == 0) {
         if (skip_index != -1) {
           throw std::runtime_error(
-              "There are two party that don't provide any value at last, but "
+              "There are two party that don't provide any value at "
+              "last, but "
               "compare operator require value from two party.");
         } else {
           skip_index = i;
@@ -913,7 +935,8 @@ class MPCOperator {
 
     if (skip_index == -1)
       throw std::runtime_error(
-          "This operator is binary, can only handle value from two party.");
+          "This operator is binary, can only handle value from two "
+          "party.");
 
     // Shape of matrix in two party shoubld be the same.
     if (skip_index == 0) {
@@ -933,11 +956,9 @@ class MPCOperator {
 
     // Set value to it's negative for some party.
     if (skip_index == 0 || skip_index == 1) {
-      if (partyIdx == 2)
-        m.mData = m.mData.array() * -1;
+      if (partyIdx == 2) m.mData = m.mData.array() * -1;
     } else {
-      if (partyIdx == 1)
-        m.mData = m.mData.array() * -1;
+      if (partyIdx == 1) m.mData = m.mData.array() * -1;
     }
 
     LOG(INFO) << "Party " << (skip_index + 1) % 3 << " and party "
@@ -949,8 +970,7 @@ class MPCOperator {
 
     std::vector<sbMatrix> sh_m_vec;
     for (uint64_t i = 0; i < 3; i++) {
-      if (static_cast<int>(i) == skip_index)
-        continue;
+      if (static_cast<int>(i) == skip_index) continue;
       if (i == partyIdx) {
         sbMatrix sh_m(num_elem, VAL_BITCOUNT);
         auto task = runtime.noDependencies();
@@ -983,11 +1003,9 @@ class MPCOperator {
 
     // Recover original value.
     if (skip_index == 0 || skip_index == 1) {
-      if (partyIdx == 2)
-        m.mData = m.mData.array() * -1;
+      if (partyIdx == 2) m.mData = m.mData.array() * -1;
     } else {
-      if (partyIdx == 1)
-        m.mData = m.mData.array() * -1;
+      if (partyIdx == 1) m.mData = m.mData.array() * -1;
     }
 
     LOG(INFO) << "Finish evalute MSB circuit.";
