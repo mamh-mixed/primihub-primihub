@@ -238,8 +238,10 @@ class DataAlign:
         # Collect all ids that PSI output.
         intersect_ids = []
         try:
-
-            with open(meta_info["psiPath"]) as in_f:
+            code_type = "utf-8"
+            if self.hasBOM(meta_info["psiPath"]):
+                code_type = "utf-8-sig"
+            with open(meta_info["psiPath"], encoding=code_type) as in_f:
                 reader = csv.reader(in_f)
                 next(reader)
                 for id in reader:
@@ -333,7 +335,6 @@ class DataAlign:
             return
 
         out_f.close()
-        in_f.close()
 
         if num_rows != len(intersect_ids):
             raise RuntimeError("Expect query {} rows from mysql but mysql return {} rows, this should be a bug.".format(
