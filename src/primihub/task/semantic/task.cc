@@ -22,6 +22,8 @@ TaskBase::TaskBase(const TaskParam* task_config,
                     std::shared_ptr<DatasetService> dataset_service) {
     setTaskParam(*task_config);
     dataset_service_ = dataset_service;
+    const auto& task_info = task_config->task_info();
+    setTaskInfo("", task_info.job_id(), task_info.task_id(), task_info.request_id(), "");
 }
 
 TaskParam* TaskBase::getTaskParam()  {
@@ -31,9 +33,10 @@ TaskParam* TaskBase::getTaskParam()  {
 void TaskBase::setTaskParam(const TaskParam& task_param) {
   task_param_.CopyFrom(task_param);
   const auto& task_info = task_param.task_info();
+  this->job_id_ = task_info.job_id();
+  this->task_id_ = task_info.task_id();
+  this->request_id_ = task_info.request_id();
   this->party_name_ = task_param.party_name();
-  setTaskInfo("", task_info.job_id(), task_info.task_id(),
-                task_info.request_id(), task_info.sub_task_id());
 }
 
 retcode TaskBase::ExtractProxyNode(const rpc::Task& task_config,

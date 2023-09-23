@@ -145,20 +145,27 @@ void RunTest(rpc::Task& task_config,
 }
 
 TEST(logistic, logistic_3pc_test) {
+  uint32_t base_port = 8000;
   rpc::Node node_1;
   node_1.set_node_id("node_1");
   node_1.set_ip("127.0.0.1");
-  node_1.set_party_id(0);
+
+  rpc::VirtualMachine *vm = node_1.add_vm();
+  vm->set_party_id(0);
 
   rpc::Node node_2;
   node_2.set_node_id("node_2");
   node_2.set_ip("127.0.0.1");
-  node_2.set_party_id(1);
+
+  vm = node_2.add_vm();
+  vm->set_party_id(1);
 
   rpc::Node node_3;
   node_3.set_node_id("node_3");
   node_3.set_ip("127.0.0.1");
-  node_3.set_party_id(2);
+
+  vm = node_3.add_vm();
+  vm->set_party_id(2);
 
   std::vector<rpc::Node> node_list;
   node_list.emplace_back(std::move(node_1));
