@@ -116,6 +116,28 @@ retcode VMScheduler::AddSchedulerNode(rpc::Task* task, const Node& dest_node) {
   }
   auto& scheduler_node = (*auxiliary_server_ptr)[SCHEDULER_NODE];
   scheduler_node = std::move(node);
+  // change scheduler node internal access to external access if possible
+  auto& local_node = server_config.getServiceConfig();
+  auto& node_cfg = server_config.getNodeConfig();
+  if (node_cfg.public_ip_proxy_enable && !node_cfg.internal_use_public_ip
+      && !(local_node == dest_node)) {
+    auto& external_node_info = server_config.PublicIpProxyConfig();
+    auto party_access_ptr = task->mutable_party_access_info();
+    for (auto& [key, pb_node] : *party_access_ptr) {
+      Node node;
+      pbNode2Node(pb_node, &node);
+      VLOG(5) << "XXXXXXXXXXXXXXXX: " << node.to_string()
+              << " dest_node: " << dest_node.to_string();
+      if (node == local_node) {
+        rpc::Node new_pb_node;
+        node2PbNode(external_node_info, &new_pb_node);
+        pb_node = std::move(new_pb_node);
+        pbNode2Node(pb_node, &node);
+        VLOG(5) << "after change XXXXXXXXXXXXXXXX: " << node.to_string()
+                << " dest_node: " << dest_node.to_string();;
+      }
+    }
+  }
   return retcode::SUCCESS;
 }
 
