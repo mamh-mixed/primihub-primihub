@@ -2,7 +2,8 @@ BUILD_FLAG ?=
 
 TARGET := //:node \
           //:cli \
-          //:task_main
+          //:task_main \
+          //:node_proxy
 
 ifneq ($(disable_py_task), y)
   TARGET += //src/primihub/pybind_warpper:linkcontext \
@@ -43,6 +44,10 @@ ifeq ($(tee), y)
 	BUILD_FLAG += --define enable_sgx=true
 endif
 
+ifeq ($(link_mode), http)
+	BUILD_FLAG += --define link_mode=http
+endif
+
 ifeq ($(debug), y)
 	BUILD_FLAG += --config=linux_asan
 endif
@@ -53,6 +58,7 @@ release:
 	ln -s -f bazel-bin/cli primihub-cli
 	rm -f primihub-node
 	ln -s -f bazel-bin/node primihub-node
+	ln -s -f bazel-bin/node_proxy primihub-node-proxy
 
 #linux_x86_64:
 #	bazel build --config=linux_x86_64 ${TARGET}

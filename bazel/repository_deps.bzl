@@ -594,7 +594,7 @@ def primihub_deps_cn():
   if "poco" not in native.existing_rules():
     http_archive(
       name = "poco",
-      build_file = "@com_github_bazel_rules_3rdparty//:poco.BUILD",
+      build_file = "//bazel:poco.BUILD",
       sha256 = "71ef96c35fced367d6da74da294510ad2c912563f12cd716ab02b6ed10a733ef",
       strip_prefix = "poco-poco-1.12.4-release",
       urls = [

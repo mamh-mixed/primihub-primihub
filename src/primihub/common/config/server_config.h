@@ -22,9 +22,10 @@
 #include "src/primihub/common/config/config.h"
 
 namespace primihub {
-using primihub::common::CertificateConfig;
-using primihub::common::RedisConfig;
-using primihub::common::NodeConfig;
+using CertificateConfig = primihub::common::CertificateConfig;
+using RedisConfig = primihub::common::RedisConfig;
+using NodeConfig = primihub::common::NodeConfig;
+using ServerInfo = primihub::common::ServerInfo;
 class ServerConfig {
  public:
   ServerConfig() = default;
@@ -32,6 +33,8 @@ class ServerConfig {
     static ServerConfig ins;
     return ins;
   }
+  ServerInfo& DelegateServer() {return config_.delegate_node;}
+  std::string GetLinkModeName() {return config_.link_mode; }
   retcode initServerConfig(const std::string& config_file);
   Node& getServiceConfig() { return config_.server_config;}
   bool PublicIpProxyEnabled() {return config_.public_ip_proxy_enable;}

@@ -21,9 +21,11 @@
 #include "src/primihub/util/network/link_factory.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/cli/common.h"
+#include "src/primihub/util/util.h"
 
 ABSL_FLAG(std::string, server, "127.0.0.1:50050", "server address");
 ABSL_FLAG(std::string, type, "", "run task or register dataset(reg)");
+ABSL_FLAG(std::string, mode, "grpc", "GRPC/HTTP");
 ABSL_FLAG(std::string, job_id, "100", "job id");
 ABSL_FLAG(std::string, task_id, "200", "task id");
 ABSL_FLAG(std::string, task_config_file, "", "path of task config file");
@@ -36,13 +38,17 @@ ABSL_FLAG(std::vector<std::string>, cert_config,
           "cert config");
 
 namespace primihub {
+using LinkModeName = primihub::network::LinkModeName;
+using LinkFactory = primihub::network::LinkFactory;
 retcode Run() {
   std::string server = absl::GetFlag(FLAGS_server);
   auto cert_config_path = absl::GetFlag(FLAGS_cert_config);
   auto use_tls = absl::GetFlag(FLAGS_use_tls);
   LOG(INFO) << "use tls: " << use_tls;
-  auto link_mode = primihub::network::LinkMode::GRPC;
-  auto link_ctx = primihub::network::LinkFactory::createLinkContext(link_mode);
+  std::string mode = absl::GetFlag(FLAGS_mode);
+  LOG(INFO) << "link mode: " << mode;
+  auto link_mode = LinkFactory::GetLinkMode(mode);
+  auto link_ctx = LinkFactory::createLinkContext(link_mode);
   if (use_tls) {
     auto& ca_path = cert_config_path[0];
     auto& key_path = cert_config_path[1];

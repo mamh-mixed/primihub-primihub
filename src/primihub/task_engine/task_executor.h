@@ -56,7 +56,7 @@ class TaskEngine {
   std::string config_file_;
   Node schedule_node_;
   bool schedule_node_available_{false};
-  LinkMode link_mode_{LinkMode::GRPC};
+  LinkMode link_mode_{LinkMode::HTTP};
   LinkContextPtr link_ctx_{nullptr};
   TaskPtr task_{nullptr};
   DatasetServicePtr dataset_service_{nullptr};

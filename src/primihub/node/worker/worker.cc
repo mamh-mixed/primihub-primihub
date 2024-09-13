@@ -171,6 +171,7 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
   args.push_back("--request=" + request_base64_str);
   args.push_back("--request_id=" + task_info.request_id());
   // using POCO process
+  VLOG(5) << "execute_app: " << execute_app;
   Poco::Pipe outPipe;
   auto handle_ = Process::launch(execute_app, args, 0, &outPipe, &outPipe);
   Poco::PipeInputStream istr(outPipe);

@@ -63,12 +63,12 @@ retcode TaskEngine::ParseTaskRequest(const std::string& request_str) {
 
 retcode TaskEngine::InitCommunication() {
   using LinkFactory = primihub::network::LinkFactory;
-  link_mode_ = LinkMode::GRPC;
+  auto& svr_cfg = primihub::ServerConfig::getInstance();
+  link_mode_ = LinkFactory::GetLinkMode(svr_cfg.GetLinkModeName());
   link_ctx_ = LinkFactory::createLinkContext(link_mode_);
-  auto& server_config = primihub::ServerConfig::getInstance();
-  auto& host_cfg = server_config.getServiceConfig();
+  auto& host_cfg = svr_cfg.getServiceConfig();
   if (host_cfg.use_tls()) {
-    link_ctx_->initCertificate(server_config.getCertificateConfig());
+    link_ctx_->initCertificate(svr_cfg.getCertificateConfig());
   }
   return retcode::SUCCESS;
 }

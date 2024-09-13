@@ -60,6 +60,10 @@ config_setting(
   name = "py_task_enabled",
   values = {"define" : "enable_py_task=true"},
 )
+config_setting(
+  name = "http_enabled",
+  values = {"define" : "link_mode=http"},
+)
 
 LINK_PYTHON_OPTS = PLACEHOLDER-PYTHON3.X-CONFIG
 
@@ -86,9 +90,14 @@ cc_binary(
 
 cc_binary(
   name = "node",
-  deps = [
-    "//src/primihub/node:node_impl",
-  ] + select({
+  deps = select({
+    "http_enabled": [
+      "//src/primihub/node/http:http_node_lib",
+    ],
+    "//conditions:default": [
+      "//src/primihub/node:node_impl",
+    ]
+  }) + select({
     "py_task_enabled": [":python3_lib",],
     "//conditions:default": []
   }),
@@ -98,6 +107,14 @@ cc_binary(
   name = "cli",
   deps = [
     "//src/primihub/cli:cli_impl",
+  ] ,
+)
+
+cc_binary(
+  name = "node_proxy",
+  deps = [
+    "//src/primihub/proxy:node_proxy_impl",
+    #":python3_lib",
   ] ,
 )
 

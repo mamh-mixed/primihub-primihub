@@ -7,11 +7,13 @@ cc_library(
   srcs = [
     "link_context.cc",
     "grpc_link_context.cc",
+    "http_link_context.cc",
   ],
   hdrs = [
     "link_factory.h",
     "link_context.h",
     "grpc_link_context.h",
+    "http_link_context.h",
   ],
   copts = C_OPT,
   linkopts = LINK_OPTS,
@@ -26,6 +28,7 @@ cc_library(
     "//src/primihub/util:pb_log_helper",
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
+    "@curl//:curl",
   ],
   visibility = ["//visibility:public"],
 )

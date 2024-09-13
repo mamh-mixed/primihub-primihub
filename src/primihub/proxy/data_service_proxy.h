@@ -14,8 +14,8 @@
  limitations under the License.
  */
 
-#ifndef SRC_PRIMIHUB_NODE_DS_H_
-#define SRC_PRIMIHUB_NODE_DS_H_
+#ifndef SRC_PRIMIHUB_PROXY_DATA_SERVICE_PROXY_H_
+#define SRC_PRIMIHUB_PROXY_DATA_SERVICE_PROXY_H_
 
 #include <glog/logging.h>
 #include <grpc/grpc.h>
@@ -29,32 +29,33 @@
 
 #include "src/primihub/protos/service.grpc.pb.h"
 #include "src/primihub/protos/service.pb.h"
-#include "src/primihub/node/ds_handler.h"
 #include "src/primihub/common/common.h"
+#include "src/primihub/util/network/link_context.h"
 
 namespace primihub {
-class DataServiceImpl final: public rpc::DataSetService::Service {
+using LinkContext = primihub::network::LinkContext;
+class DataServiceProxyImpl final: public rpc::DataSetService::Service {
  public:
-  explicit DataServiceImpl(service::DatasetService* service) {
-    ds_handler_ = std::make_unique<DataServiceHandler>(service);
-  }
+  explicit DataServiceProxyImpl(LinkContext* link_ctx, const Node& dest_node) :
+      link_ctx_(link_ctx), dest_node_(dest_node) {}
 
   grpc::Status NewDataset(grpc::ServerContext *context,
                           const rpc::NewDatasetRequest *request,
                           rpc::NewDatasetResponse *response) override;
-  grpc::Status QueryResult(grpc::ServerContext* context,
-                           const rpc::QueryResultRequest* request,
-                           rpc::QueryResultResponse* response);
-  grpc::Status DownloadData(grpc::ServerContext* context,
-                            const rpc::DownloadRequest* request,
-                            grpc::ServerWriter<rpc::DownloadRespone>* writer);
-  grpc::Status UploadData(grpc::ServerContext* context,
-                          grpc::ServerReader<rpc::UploadFileRequest>* reader,
-                          rpc::UploadFileResponse* response);
+  // grpc::Status QueryResult(grpc::ServerContext* context,
+  //                          const rpc::QueryResultRequest* request,
+  //                          rpc::QueryResultResponse* response);
+  // grpc::Status DownloadData(grpc::ServerContext* context,
+  //                           const rpc::DownloadRequest* request,
+  //                           grpc::ServerWriter<rpc::DownloadRespone>* writer);
+  // grpc::Status UploadData(grpc::ServerContext* context,
+  //                         grpc::ServerReader<rpc::UploadFileRequest>* reader,
+  //                         rpc::UploadFileResponse* response);
 
  private:
-  std::unique_ptr<DataServiceHandler> ds_handler_{nullptr};
+  LinkContext* link_ctx_{nullptr};
+  Node dest_node_;
 };
 
 }  // namespace primihub
-#endif  // SRC_PRIMIHUB_NODE_DS_H_
+#endif  // SRC_PRIMIHUB_PROXY_DATA_SERVICE_PROXY_H_

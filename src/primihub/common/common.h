@@ -174,5 +174,11 @@ struct DatasetMetaInfo {
   std::vector<std::tuple<std::string, int>> schema;
 };
 
+struct DataBlock {
+  std::string data;
+  bool is_last_block{false};
+  std::string file_name;
+};
+
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_COMMON_COMMON_H_

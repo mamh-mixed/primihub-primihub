@@ -3,6 +3,22 @@ config_setting(
   name = "enable_sgx",
   values = {"define" : "enable_sgx=true"},
 )
+cc_binary(
+  name = "node_http",
+  srcs = [
+    "http_main.cc",
+  ],
+  deps = [
+    "@poco//:poco",
+    "//src/primihub/common:common_defination",
+    "//src/primihub/common/config:config_lib",
+    "//src/primihub/common/config:server_config",
+    "@com_github_glog_glog//:glog",
+    "@com_google_absl//absl/flags:flag",
+    "@com_google_absl//absl/flags:parse",
+  ],
+)
+
 cc_library(
   name = "node_impl",
   hdrs = [
@@ -37,11 +53,56 @@ cc_library(
     "@com_github_stduuid//:stduuid_lib",
   ],
 )
+cc_library(
+  name = "node_impl_internal",
+  hdrs = [
+    "node_impl.h",
+  ],
+  srcs = [
+    "node_impl.cc",
+  ],
+  deps = [
+    ":nodelet_lib",
+    "//src/primihub/common:common_defination",
+    "//src/primihub/node/worker:worker_lib_impl",
+    "//src/primihub/protos:worker_proto",
+    "//src/primihub/common/config:config_lib",
+    "//src/primihub/util:util_lib",
+    "//src/primihub/util:log_util",
+    "//src/primihub/util:pb_log_helper",
+    "//src/primihub/util:hash_lib",
+    "//src/primihub/task/language:language_parser_factory",
+    "//src/primihub/task/semantic:task_semantic_parser",
+    "//src/primihub/service/dataset/meta_service:meta_service_factory",
+    "@com_github_glog_glog//:glog",
+    "@com_github_grpc_grpc//:grpc++",
+    "@com_google_absl//absl/flags:flag",
+    "@com_google_absl//absl/flags:parse",
+    "@arrow",
+    "@curl//:curl",
+    "@com_github_stduuid//:stduuid_lib",
+  ],
+)
 
 cc_library(
   name = "data_register_service",
   hdrs = ["ds.h"],
   srcs = ["ds.cc"],
+  deps = [
+    ":data_register_service_handler",
+    "//src/primihub/protos:service_proto",
+    "//src/primihub/util:threadsafe_queue",
+    "//src/primihub/util:pb_log_helper",
+  ],
+)
+cc_library(
+  name = "data_register_service_handler",
+  hdrs = [
+    "ds_handler.h",
+  ],
+  srcs = [
+    "ds_handler.cc"
+  ],
   deps = [
     "//src/primihub/protos:service_proto",
     "//src/primihub/data_store:data_store_lib",

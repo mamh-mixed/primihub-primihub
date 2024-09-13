@@ -33,16 +33,18 @@ namespace primihub::task {
  * TaskContext
  * contains temporary storage, communication link info
 */
+using LinkFactory = primihub::network::LinkFactory;
+using LinkMode = primihub::network::LinkMode;
 class TaskContext {
  public:
   TaskContext() {
-    auto link_mode = primihub::network::LinkMode::GRPC;
-    link_ctx_ = primihub::network::LinkFactory::createLinkContext(link_mode);
+
     auto& server_config = primihub::ServerConfig::getInstance();
     if (!server_config.IsInitFlag()) {
       LOG(WARNING) << "instance is not init";
     }
-
+    auto link_mode = LinkFactory::GetLinkMode(server_config.GetLinkModeName());
+    link_ctx_ = LinkFactory::createLinkContext(link_mode);
     auto& host_cfg = server_config.getServiceConfig();
     if (host_cfg.use_tls()) {
       LOG(INFO) << "link_ctx_->initCertificate";
@@ -50,8 +52,8 @@ class TaskContext {
     }
   }
 
-  explicit TaskContext(primihub::network::LinkMode mode) {
-    link_ctx_ = primihub::network::LinkFactory::createLinkContext(mode);
+  explicit TaskContext(LinkMode mode) {
+    link_ctx_ = LinkFactory::createLinkContext(mode);
     auto& server_config = primihub::ServerConfig::getInstance();
     auto& host_cfg = server_config.getServiceConfig();
     if (host_cfg.use_tls()) {

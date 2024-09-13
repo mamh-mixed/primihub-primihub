@@ -128,6 +128,7 @@ struct Tee {
 
 struct NodeConfig {
   Node server_config;
+  std::string link_mode{"grpc"};
   ServerInfo public_ip_proxy_config;
   bool public_ip_proxy_enable{false};
   ServerInfo meta_service_config;
@@ -138,6 +139,7 @@ struct NodeConfig {
   ServerInfo proxy_server_cfg;
   StorageInfo storage_info;
   bool disable_report{false};
+  ServerInfo delegate_node;
 };
 
 }  // namespace primihub::common
@@ -291,6 +293,7 @@ template <> struct convert<NodeConfig> {
     node["location"] = nc.server_config.ip();
     node["grpc_port"] = nc.server_config.port();
     node["use_tls"] = nc.server_config.use_tls();
+    node["link_mode"] = nc.link_mode;
     node["tee"] = nc.tee_conf;
     node["storage_path"] = nc.storage_info.path;
     return node;
@@ -300,6 +303,9 @@ template <> struct convert<NodeConfig> {
     nc.server_config.id_ = node["node"].as<std::string>();
     nc.server_config.ip_ = node["location"].as<std::string>();
     nc.server_config.port_ = node["grpc_port"].as<uint32_t>();
+    if (node["link_mode"]) {
+      nc.link_mode = node["link_mode"].as<std::string>();
+    }
     if (node["public_ip_proxy"]) {
       nc.public_ip_proxy_config = node["public_ip_proxy"].as<ServerInfo>();
       nc.public_ip_proxy_enable = true;
@@ -322,6 +328,9 @@ template <> struct convert<NodeConfig> {
     }
     if (node["proxy_server"]) {
       nc.proxy_server_cfg = node["proxy_server"].as<ServerInfo>();
+    }
+    if (node["delegate_node"]) {
+      nc.delegate_node = node["delegate_node"].as<ServerInfo>();
     }
     // // datasets may be too much, so do not parse from here
     // auto datasets = node["datasets"].as<YAML::Node>();

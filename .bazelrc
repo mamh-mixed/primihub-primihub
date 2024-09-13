@@ -13,6 +13,8 @@ build:linux_x86_64 --copt=-msse3
 build:linux_x86_64 --copt=-msse4.1
 build:linux_x86_64 --copt=-mpclmul
 #build:linux_x86_64 --define enable_mysql_driver=true
+build:linux_x86_64 --define link_mode=http
+build:linux_x86_64 --define grpc_no_xds=true
 
 build:linux_aarch64 --cxxopt=-std=c++17
 build:linux_aarch64 --host_cxxopt=-std=c++17
