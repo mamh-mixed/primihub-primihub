@@ -22,9 +22,9 @@ node: "node1"
 location: "127.0.0.1"
 use_tls: false
 grpc_port: 50051
-link_mode: "http"
+
 # public_ip_proxy:
-#   mode: "http"
+#   mode: "grpc"
 #   ip:  "127.0.0.1"
 #   port: 30004
 #   use_tls: false
@@ -35,7 +35,7 @@ link_mode: "http"
 #   cert: "data/cert/test.crt"
 
 proxy_server:
-  mode: "http"
+  mode: "grpc"
   ip:  "127.0.0.1"
   port: 50051
   use_tls: false

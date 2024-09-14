@@ -100,9 +100,14 @@ function start_primihub_server() {
   # log_level 1->7,the larger the value the more detailed the log
   log_level=7
   export GLOG_logtostderr=1 GLOG_v=${log_level}
-  nohup ./bazel-bin/node --node_id=node0 --config=./config/node0.yaml >> log_node0 2>&1 &
-  nohup ./bazel-bin/node --node_id=node1 --config=./config/node1.yaml >> log_node1 2>&1 &
-  nohup ./bazel-bin/node --node_id=node2 --config=./config/node2.yaml >> log_node2 2>&1 &
+  nohup ./primihub-node --config=./config/node0.yaml >> log_node0 2>&1 &
+  nohup ./primihub-node --config=./config/node1.yaml >> log_node1 2>&1 &
+  nohup ./primihub-node --config=./config/node2.yaml >> log_node2 2>&1 &
+  export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
+  nohup ./primihub-node-proxy --config=./config/proxy.yaml >> log_proxy 2>&1 &
+  # nohup ./bazel-bin/node --node_id=node0 --config=./config/node0.yaml >> log_node0 2>&1 &
+  # nohup ./bazel-bin/node --node_id=node1 --config=./config/node1.yaml >> log_node1 2>&1 &
+  # nohup ./bazel-bin/node --node_id=node2 --config=./config/node2.yaml >> log_node2 2>&1 &
 }
 
 function main() {

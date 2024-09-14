@@ -38,6 +38,7 @@ PYBIND11_MODULE(linkcontext, m)
 {
     py::enum_<LinkMode>(m, "LinkMode", py::arithmetic())
         .value("GRPC", LinkMode::GRPC, "connection with grpc")
+        .value("HTTP", LinkMode::HTTP, "connection with grpc")
         .value("RAW_SOCKET", LinkMode::RAW_SOCKET, "connect with socket");
 
     py::class_<CertificateConfig>(m, "CertificateConfig")

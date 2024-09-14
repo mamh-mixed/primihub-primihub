@@ -30,17 +30,23 @@ function main() {
   echo "begin to stop meta service"
   kill_app ${meta_app}
   echo "stop meta service done!"
-  
+
   #kill primihub server
   primihub_app="task_main"
   echo "begin to stop subprocess primihub service"
   kill_app ${primihub_app}
   echo "stop ${primihub_app} done!"
 
-  primihub_app="bazel-bin/node"
+  primihub_app="primihub-node"
   echo "begin to stop primihub service"
   kill_app ${primihub_app}
   echo "stop ${primihub_app} done!"
+
+  primihub_app="primihub-node-proxy"
+  echo "begin to stop primihub node proxy service"
+  kill_app ${primihub_app}
+  echo "stop ${primihub_app} done!"
+
 }
 
 main

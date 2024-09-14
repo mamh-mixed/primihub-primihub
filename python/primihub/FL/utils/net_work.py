@@ -6,6 +6,15 @@ from primihub.context import Context
 def Node(ip, port, use_tls, nodename="default"):
     return linkcontext.Node(ip, port, use_tls, nodename)
 
+def GetLinkMode(link_mode_name):
+    name = link_mode_name.upper()
+    if name == "HTTP":
+        return linkcontext.LinkMode.HTTP
+    elif name == "GRPC":
+        return linkcontext.LinkMode.GRPC
+    else:
+        logger.warning(f"{name} is unknown, using default GRPC")
+        return linkcontext.LinkMode.GRPC
 
 class GrpcClient:
 
@@ -13,9 +22,8 @@ class GrpcClient:
                  node_info, task_info) -> None:
         self.local_party = local_party
         self.remote_party = remote_party
-
-        self.link_context = linkcontext.LinkFactory.createLinkContext(
-            linkcontext.LinkMode.GRPC)
+        link_mode = GetLinkMode(Context.link_mode_name)
+        self.link_context = linkcontext.LinkFactory.createLinkContext(link_mode)
         self.link_context.setTaskInfo(task_info.task_id,
                                       task_info.job_id,
                                       task_info.request_id,

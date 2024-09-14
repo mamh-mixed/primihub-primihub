@@ -26,6 +26,7 @@ class ContextAll:
         self.party_access_info = {}
         self.task_config = ""
         self.cert_config = {}
+        self.link_mode_name = "GRPC"
 
     def init_context(self):
         self.task_req = worker_pb2.PushTaskRequest()
@@ -42,9 +43,14 @@ class ContextAll:
     def task_code(self):
         return self.task_config.code
 
-def set_message(message):
+def set_message(message, link_mode_name="GRPC"):
     Context.message = message
+    Context.link_mode_name = link_mode_name
+    logger.info(f"link mode: {link_mode_name}")
     Context.init_context()
+
+def link_mode_name():
+    return Context.link_mode_name
 
 def set_cert_config(root_ca_path, key_path, cert_path):
     Context.cert_config = {

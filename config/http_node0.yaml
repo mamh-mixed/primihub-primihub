@@ -27,11 +27,11 @@ link_mode: "http"
 #   key: "data/cert/test.key"
 #   cert: "data/cert/test.crt"
 
-#public_ip_proxy:
-#  mode: "http"
-#  ip:  "127.0.0.1"
-#  port: 9080
-#  use_tls: false
+public_ip_proxy:
+  mode: "http"
+  ip:  "127.0.0.1"
+  port: 9080
+  use_tls: false
 
 proxy_server:
   mode: "http"
