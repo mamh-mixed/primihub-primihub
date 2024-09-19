@@ -182,10 +182,15 @@ void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
     LOG(WARNING) << "no datasets found in config file, ignore....";
     return;
   }
+  auto& ins = ServerConfig::getInstance();
+  std::string dataset_prefix = ins.DatasetPrefix();
   for (const auto& dataset : config["datasets"]) {
     try {
       auto dataset_type = dataset["model"].as<std::string>();
       auto dataset_uid = dataset["description"].as<std::string>();
+      if (!dataset_prefix.empty()) {
+        dataset_uid = dataset_prefix + "_" + dataset_uid;
+      }
       auto access_info = createAccessInfo(dataset_type, dataset);
       if (access_info == nullptr) {
         LOG(WARNING) << "create access info for "

@@ -138,6 +138,7 @@ struct NodeConfig {
   ServerInfo proxy_server_cfg;
   StorageInfo storage_info;
   bool disable_report{false};
+  std::string dataset_prefix;
 };
 
 }  // namespace primihub::common
@@ -331,6 +332,9 @@ template <> struct convert<NodeConfig> {
     // }
     if (node["tee"]) {
       nc.tee_conf = node["tee"].as<Tee>();
+    }
+    if (node["dataset_prefix"]) {
+      nc.dataset_prefix = node["dataset_prefix"].as<std::string>();
     }
     return true;
   }
