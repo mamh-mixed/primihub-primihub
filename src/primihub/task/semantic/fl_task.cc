@@ -42,9 +42,10 @@ int FLTask::execute() {
     LOG(ERROR) << "ill formatted task request";
     return -1;
   }
-  auto& server_config = primihub::ServerConfig::getInstance();
-  auto& host_cfg = server_config.getServiceConfig();
-  std::string link_mode_name = server_config.GetLinkModeName();
+  auto& svr_cfg = primihub::ServerConfig::getInstance();
+  auto& host_cfg = svr_cfg.getServiceConfig();
+  std::string link_mode_name = svr_cfg.GetLinkModeName();
+  auto config_file_path = svr_cfg.getConfigFile();
   py::scoped_interpreter python;
   VLOG(1) << "<<<<<<<<< Import PrmimiHub Python Executor <<<<<<<<<";
   py::object ph_exec_m_ =
@@ -52,12 +53,12 @@ int FLTask::execute() {
   py::object ph_context_m_ = py::module::import("primihub.context");
   py::object set_message;
   set_message = ph_context_m_.attr("set_message");
-  set_message(py::bytes(pb_task_request_), link_mode_name);
+  set_message(py::bytes(pb_task_request_), config_file_path, link_mode_name);
   set_message.release();
 
 
   if (host_cfg.use_tls()) {
-    auto& cert_config = server_config.getCertificateConfig();
+    auto& cert_config = svr_cfg.getCertificateConfig();
     auto root_ca_path = cert_config.rootCAPath();
     auto key_path = cert_config.keyPath();
     auto cert_path = cert_config.certPath();

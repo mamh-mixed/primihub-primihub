@@ -27,6 +27,7 @@ class ContextAll:
         self.task_config = ""
         self.cert_config = {}
         self.link_mode_name = "GRPC"
+        self.config_file = ""
 
     def init_context(self):
         self.task_req = worker_pb2.PushTaskRequest()
@@ -43,8 +44,10 @@ class ContextAll:
     def task_code(self):
         return self.task_config.code
 
-def set_message(message, link_mode_name="GRPC"):
+def set_message(message, config_file, link_mode_name="GRPC"):
     Context.message = message
+    Context.config_file = config_file
+    logger.info(f"config file: {config_file}")
     Context.link_mode_name = link_mode_name
     logger.info(f"link mode: {link_mode_name}")
     Context.init_context()

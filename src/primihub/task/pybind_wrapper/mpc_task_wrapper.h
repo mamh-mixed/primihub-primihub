@@ -33,6 +33,7 @@ class MPCExecutor {
  public:
   MPCExecutor(const std::string& task_req,
               const std::string& protocol = "ABY3",
+              const std::string& config_file = "",
               const std::string& root_ca_path = "",
               const std::string& key_path = "",
               const std::string& cert_path = "");
@@ -95,6 +96,7 @@ class MPCExecutor {
   std::string root_ca_path_;
   std::string key_path_;
   std::string cert_path_;
+  std::string config_file_;
 };
 }  // namespace primihub::task
 

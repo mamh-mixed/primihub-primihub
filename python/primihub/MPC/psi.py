@@ -30,10 +30,11 @@ class DataType(Enum):
 class TwoPartyPsi:
     def __init__(self):
         cert_config = Context.cert_config
+        config_file = Context.config_file
         root_ca_path = cert_config.get("root_ca_path", "")
         key_path = cert_config.get("key_path", "")
         cert_path = cert_config.get("cert_path", "")
-        self.psi_executor = ph_slib.PSIExecutor(Context.message,
+        self.psi_executor = ph_slib.PSIExecutor(Context.message, config_file,
                                 root_ca_path, key_path, cert_path)
 
     def run(self,
@@ -41,7 +42,7 @@ class TwoPartyPsi:
             parties: list,
             receiver: str,
             broadcast: bool,
-            protocol: PsiType = PsiType.KKRT,
+            protocol: PsiType = PsiType.ECDH,
             data_type: DataType = DataType.String):
         if len(input) == 0:
             return list()

@@ -25,10 +25,16 @@ namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 MPCExecutor::MPCExecutor(const std::string& task_req_str,
                          const std::string& protocol,
+                         const std::string& config_file,
                          const std::string& root_ca_path,
                          const std::string& key_path,
                          const std::string& cert_path) :
-    root_ca_path_(root_ca_path), key_path_(key_path), cert_path_(cert_path) {
+    config_file_(config_file), root_ca_path_(root_ca_path),
+    key_path_(key_path), cert_path_(cert_path) {
+  auto& srv_cfg = primihub::ServerConfig::getInstance();
+  if (!srv_cfg.IsInitFlag()) {
+    srv_cfg.initServerConfig(config_file);
+  }
   task_req_ptr_ = std::make_unique<primihub::rpc::PushTaskRequest>();
   bool succ_flag = task_req_ptr_->ParseFromString(task_req_str);
   if (!succ_flag) {

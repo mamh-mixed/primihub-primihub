@@ -38,10 +38,10 @@ using LinkMode = primihub::network::LinkMode;
 class TaskContext {
  public:
   TaskContext() {
-
     auto& server_config = primihub::ServerConfig::getInstance();
     if (!server_config.IsInitFlag()) {
       LOG(WARNING) << "instance is not init";
+      throw std::runtime_error("instance is not init");
     }
     auto link_mode = LinkFactory::GetLinkMode(server_config.GetLinkModeName());
     link_ctx_ = LinkFactory::createLinkContext(link_mode);
