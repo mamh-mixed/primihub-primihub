@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <mutex>
 
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/common/common.h"
@@ -84,6 +85,7 @@ class HttpChannel : public IChannel {
                             std::string* result);
 
  private:
+  std::mutex mtx_;
   CURL* curl_{nullptr};
   primihub::Node dest_node_;
   int retry_max_times_{3};

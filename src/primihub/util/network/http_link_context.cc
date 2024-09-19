@@ -31,13 +31,13 @@ HttpChannel::HttpChannel(const primihub::Node& node, LinkContext* link_ctx) :
   VLOG(5) << "address_: " << address_;
   curl_global_init(CURL_GLOBAL_ALL);
   /* get a curl handle */
-  curl_ = curl_easy_init();
+  // curl_ = curl_easy_init();
 }
 retcode HttpChannel::ExecuteHttpRequest(const Node& dest,
                                         const std::string& method_name,
                                         std::string_view request_info_sv,
                                         std::string* result) {
-//
+  std::lock_guard<std::mutex> lck(mtx_);
   this->curl_ = curl_easy_init();
   std::string url = "http://";
   url.append(dest.ip()).append(":").append(std::to_string(dest.port()))
@@ -73,8 +73,8 @@ retcode HttpChannel::ExecuteHttpRequest(const Node& dest,
                                         const std::string& method_name,
                                         const std::string& request_info,
                                         std::string* result) {
-//
-  auto req_info_sv = std::string_view(request_info.c_str(), request_info.length());
+  auto req_info_sv =
+      std::string_view(request_info.c_str(), request_info.length());
   return ExecuteHttpRequest(dest, method_name, req_info_sv, result);
 }
 
@@ -92,28 +92,6 @@ retcode HttpChannel::BuildTaskInfo(rpc::TaskContext* task_info) {
   task_info->set_request_id(link_ctx->request_id());
   return retcode::SUCCESS;
 }
-
-// std::shared_ptr<grpc::Channel> HttpChannel::buildChannel(
-//     std::string& server_address,
-//     bool use_tls) {
-//   std::shared_ptr<grpc::ChannelCredentials> creds{nullptr};
-//   grpc::ChannelArguments channel_args;
-//   // channel_args.SetMaxReceiveMessageSize(128*1024*1024);
-//   if (use_tls) {
-//     auto link_context = this->getLinkContext();
-//     auto& cert_config = link_context->getCertificateConfig();
-//     grpc::SslCredentialsOptions ssl_opts;
-//     ssl_opts.pem_root_certs = cert_config.rootCAContent();
-//     ssl_opts.pem_private_key = cert_config.keyContent();
-//     ssl_opts.pem_cert_chain = cert_config.certContent();
-//     creds = grpc::SslCredentials(ssl_opts);
-//   } else {
-//     creds = grpc::InsecureChannelCredentials();
-//   }
-//   grpc_channel_ = grpc::CreateCustomChannel(server_address,
-//                                             creds, channel_args);
-//   return grpc_channel_;
-// }
 
 retcode HttpChannel::sendRecv(const std::string& role,
     std::string_view send_data, std::string* recv_data) {
@@ -158,7 +136,6 @@ retcode HttpChannel::send(const std::string& role, const std::string& data) {
 }
 
 retcode HttpChannel::send(const std::string& role, std::string_view data_sv) {
-  // VLOG(5) << "GrpcChannel::send begin to send, use key: " << role;
   rpc::TaskRequest send_requests;
   buildTaskRequest(role, data_sv, &send_requests);
   auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
@@ -169,50 +146,12 @@ retcode HttpChannel::send(const std::string& role, std::string_view data_sv) {
   std::string send_data;
   send_requests.SerializeToString(&send_data);
   std::string result;
-  ExecuteHttpRequest(dest_node_, HttpMethod::Send, send_data, &result);
-  // do {
-  //   grpc::ClientContext context;
-  //   if (send_tiemout_ms > 0) {
-  //     auto deadline = std::chrono::system_clock::now() +
-  //       std::chrono::milliseconds(send_tiemout_ms);
-  //     context.set_deadline(deadline);
-  //   }
-  //   rpc::TaskResponse task_response;
-  //   using writer_t = grpc::ClientWriter<rpc::TaskRequest>;
-  //   std::unique_ptr<writer_t> writer(stub_->Send(&context, &task_response));
-  //   for (const auto& request : send_requests) {
-  //     writer->Write(request);
-  //   }
-  //   writer->WritesDone();
-  //   grpc::Status status = writer->Finish();
-  //   if (status.ok()) {
-  //     auto ret_code = task_response.ret_code();
-  //     if (ret_code) {
-  //         PH_LOG(ERROR, LogType::kTask)
-  //             << "send data to [" << dest_node_.to_string()
-  //             << "] return failed error code: " << ret_code;
-  //         return retcode::FAIL;
-  //     }
-  //     break;
-  //   } else {
-  //     PH_LOG(WARNING, LogType::kTask)
-  //         << "send data to [" << dest_node_.to_string()
-  //         << "] failed. error_code: " << status.error_code() << " "
-  //         << "error message: " << status.error_message() << " "
-  //         << "retry: " << retry_time;
-  //     retry_time++;
-  //     if (retry_time < retry_max_times_) {
-  //       continue;
-  //     } else {
-  //       PH_LOG(ERROR, LogType::kTask)
-  //           << TASK_INFO_STR
-  //           << "send data to [" << dest_node_.to_string()
-  //           << "] failed. error_code: " << status.error_code() << " "
-  //           << "error message: " << status.error_message();
-  //       return retcode::FAIL;
-  //     }
-  //   }
-  // } while (true);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::Send, send_data, &result);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::Send failed";
+    return retcode::FAIL;
+  }
   return retcode::SUCCESS;
 }
 
@@ -241,70 +180,26 @@ std::string HttpChannel::forwardRecv(const std::string& role) {
   auto task_info = send_request.mutable_task_info();
   BuildTaskInfo(task_info);
   send_request.set_role(role);
+  auto link_ctx = this->getLinkContext();
   VLOG(5) << "forwardRecv request info: job_id: "
-          << this->getLinkContext()->job_id()
-          << " task_id: " << this->getLinkContext()->task_id()
-          << " request id: " << this->getLinkContext()->request_id()
-          << " recv key: " << role
-          << " nodeinfo: " << this->dest_node_.to_string();
+          << link_ctx->job_id() << " "
+          << "task_id: " << link_ctx->task_id() << " "
+          << "request id: " << link_ctx->request_id() << " "
+          << "recv key: " << role << " "
+          << "nodeinfo: " << this->dest_node_.to_string();
   std::string req_data;
   send_request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::ForwardRecv, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::ForwardRecv, req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::ForwardRecv failed";
+    return std::string("");
+  }
   rpc::TaskRequest recv_response;
   recv_response.ParseFromString(result_buf);
   std::string tmp_buf = recv_response.data();
   return tmp_buf;
-  // SCopedTimer timer;
-  // grpc::ClientContext context;
-  // auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
-  // if (send_tiemout_ms > 0) {
-  //   auto deadline = std::chrono::system_clock::now() +
-  //     std::chrono::milliseconds(send_tiemout_ms);
-  //   context.set_deadline(deadline);
-  // }
-  // rpc::TaskRequest send_request;
-  // auto task_info = send_request.mutable_task_info();
-  // BuildTaskInfo(task_info);
-  // send_request.set_role(role);
-  // // VLOG(5) << "forwardRecv request info: job_id: "
-  // //         << this->getLinkContext()->job_id()
-  // //         << " task_id: " << this->getLinkContext()->task_id()
-  // //         << " request id: " << this->getLinkContext()->request_id()
-  // //         << " recv key: " << role
-  // //         << " nodeinfo: " << this->dest_node_.to_string();
-  // // using reader_t = grpc::ClientReader<rpc::TaskRequest>;
-  // auto client_reader = this->stub_->ForwardRecv(&context, send_request);
-
-  // // waiting for response
-  // std::string tmp_buff;
-  // rpc::TaskRequest recv_response;
-  // std::string TASK_INFO_STR = pb_util::TaskInfoToString(*task_info);
-  // bool init_flag{false};
-  // while (client_reader->Read(&recv_response)) {
-  //   auto data = recv_response.data();
-  //   if (!init_flag) {
-  //     size_t data_len = recv_response.data_len();
-  //     tmp_buff.reserve(data_len);
-  //     init_flag = true;
-  //   }
-  //   PH_VLOG(5, LogType::kTask)
-  //       << "data length: " << data.size();
-  //   tmp_buff.append(data);
-  // }
-
-  // grpc::Status status = client_reader->Finish();
-  // if (!status.ok()) {
-  //   PH_LOG(ERROR, LogType::kTask)
-  //       << "recv data encountes error, detail: "
-  //       << status.error_code() << ": " << status.error_message();
-  //   return std::string("");
-  // }
-  // // VLOG(5) << "recv data success, data size: " << tmp_buff.size();
-  // auto time_cost = timer.timeElapse();
-  // PH_VLOG(5, LogType::kTask)
-  //     << "forwardRecv time cost(ms): " << time_cost;
-  // return tmp_buff;
 }
 
 retcode HttpChannel::submitTask(const rpc::PushTaskRequest& request,
@@ -315,7 +210,12 @@ retcode HttpChannel::submitTask(const rpc::PushTaskRequest& request,
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::SubmitTask, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::SubmitTask, req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::SubmitTask failed";
+    return retcode::FAIL;
+  }
   reply->ParseFromString(result_buf);
   return retcode::SUCCESS;
 }
@@ -325,7 +225,12 @@ retcode HttpChannel::executeTask(const rpc::PushTaskRequest& request,
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::ExecuteTask, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::ExecuteTask, req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::ExecuteTask failed";
+    return retcode::FAIL;
+  }
   reply->ParseFromString(result_buf);
   return retcode::SUCCESS;
 }
@@ -335,29 +240,42 @@ retcode HttpChannel::StopTask(const rpc::TaskContext& request,
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::StopTask, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::StopTask, req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::StopTask failed";
+    return retcode::FAIL;
+  }
   return retcode::SUCCESS;
 }
 
 retcode HttpChannel::killTask(const rpc::KillTaskRequest& request,
                               rpc::KillTaskResponse* reply) {
-//
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::KillTask, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::KillTask, req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::KillTask failed";
+    return retcode::FAIL;
+  }
   reply->ParseFromString(result_buf);
   return retcode::SUCCESS;
 }
 
 retcode HttpChannel::updateTaskStatus(const rpc::TaskStatus& request,
                                       rpc::Empty* reply) {
-  //
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::UpdateTaskStatus, req_data, &result_buf);
-  // reply->ParseFromString(result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::UpdateTaskStatus,
+                                req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::UpdateTaskStatus failed";
+    return retcode::FAIL;
+  }
   return retcode::SUCCESS;
 }
 
@@ -366,7 +284,13 @@ retcode HttpChannel::fetchTaskStatus(const rpc::TaskContext& request,
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::FetchTaskStatus, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::FetchTaskStatus,
+                                req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::FetchTaskStatus failed";
+    return retcode::FAIL;
+  }
   reply->ParseFromString(result_buf);
   return retcode::SUCCESS;
 }
@@ -412,39 +336,6 @@ retcode HttpChannel::CheckSendCompleteStatus(
   request.set_complete_count(expected_complete_num);
   const auto& task_info = request.task_info();
   std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
-  // do {
-  //   grpc::ClientContext context;
-  //   auto deadline = std::chrono::system_clock::now() +
-  //       std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
-  //   context.set_deadline(deadline);
-  //   rpc::Empty reply;
-  //   grpc::Status status = stub_->CompleteStatus(&context, request, &reply);
-  //   if (status.ok()) {
-  //     PH_VLOG(5, LogType::kTask)
-  //         << TASK_INFO_STR
-  //         << "send CompleteStatus to node: ["
-  //         << dest_node_.to_string() << "] rpc succeeded.";
-  //     break;
-  //   } else {
-  //     PH_LOG(WARNING, LogType::kTask)
-  //         << TASK_INFO_STR
-  //         << "send CompleteStatus to Node ["
-  //         << dest_node_.to_string() << "] rpc failed. "
-  //         << status.error_code() << ": " << status.error_message() << " "
-  //         << "retry times: " << retry_time;
-  //     retry_time++;
-  //     if (retry_time < this->retry_max_times_) {
-  //       continue;
-  //     } else {
-  //       PH_LOG(ERROR, LogType::kTask)
-  //           << TASK_INFO_STR
-  //           << "send CompleteStatus to Node ["
-  //           << dest_node_.to_string() << "] rpc failed. "
-  //           << status.error_code() << ": " << status.error_message();
-  //       return retcode::FAIL;
-  //     }
-  //   }
-  // } while (true);
   return retcode::SUCCESS;
 }
 
@@ -453,44 +344,13 @@ retcode HttpChannel::NewDataset(const rpc::NewDatasetRequest& request,
   std::string req_data;
   request.SerializeToString(&req_data);
   std::string result_buf;
-  ExecuteHttpRequest(dest_node_, HttpMethod::NewDataset, req_data, &result_buf);
+  auto ret = ExecuteHttpRequest(dest_node_,
+                                HttpMethod::NewDataset, req_data, &result_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "ExecuteHttpRequest for HttpMethod::NewDataset failed";
+    return retcode::FAIL;
+  }
   reply->ParseFromString(result_buf);
-  return retcode::SUCCESS;
-  // int retry_time{0};
-  // // const auto& task_info = request.task().task_info();
-  // std::string TASK_INFO_STR = "";
-  // do {
-  //   grpc::ClientContext context;
-  //   auto deadline = std::chrono::system_clock::now() +
-  //       std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
-  //   context.set_deadline(deadline);
-  //   grpc::Status status = dataset_stub_->NewDataset(&context, request, reply);
-  //   if (status.ok()) {
-  //     PH_VLOG(5, LogType::kTask)
-  //         << TASK_INFO_STR
-  //         << "send NewDataset to node: ["
-  //         << dest_node_.to_string() << "] rpc succeeded.";
-  //     break;
-  //   } else {
-  //     PH_LOG(WARNING, LogType::kTask)
-  //         << TASK_INFO_STR
-  //         << "send NewDataset to Node ["
-  //         << dest_node_.to_string() << "] rpc failed. "
-  //         << status.error_code() << ": " << status.error_message() << " "
-  //         << "retry times: " << retry_time;
-  //     retry_time++;
-  //     if (retry_time < this->retry_max_times_) {
-  //       continue;
-  //     } else {
-  //       PH_LOG(ERROR, LogType::kTask)
-  //           << TASK_INFO_STR
-  //           << "send NewDataset to Node ["
-  //           << dest_node_.to_string() << "] rpc failed. "
-  //           << status.error_code() << ": " << status.error_message();
-  //       return retcode::FAIL;
-  //     }
-  //   }
-  // } while (true);
   return retcode::SUCCESS;
 }
 }  // namespace primihub::network
